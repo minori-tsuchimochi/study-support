@@ -1,11 +1,82 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="UTF-8">
     <title>Study Support</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
 
   <body>
     <h1>学習支援アプリ</h1>
+
+    <button id="startBtn">開始</button>
+    <button id="endBtn">終了</button>
+    <p>経過時間： <span id="timer">0秒</span></p>
+
+    <canvas id="studyChart" width="400" height="200"></canvas>
+
+    <script th:inline="javascript">
+      let currentRecordId = null;
+      let timerInterval = null;
+      let elapsed = 0;
+      let records = [];
+
+      document.getElementById("startBtn").addEventListener("click", function() {
+        fetch('/start', {method: 'POST'})
+             .then(res => res.json())
+             .then(data => {
+                  currentRecordId = data.id;
+                  elapsed = 0;
+                  document.getElementById("timer").textContent = elapsed + "秒";
+
+                  clearInterval(timerInterval);
+                  timerInterval = setInterval(() => {
+                    elapsed++;
+                    document.getElementById("timer").textContent = elapsed + "秒";
+                  }, 1000);
+
+                  console.log("Start:", data);
+                });
+      });
+
+      document.getElementById("endBtn").addEventListener("click", function() {
+        if(!currentRecordId) return;
+        fetch('/end/' + currentRecordId, {method: 'POST'})
+             .then(res => res.json())
+             .then(data => {
+                  clearInterval(timerInterval);
+                  document.getElementById("timer").textContent = "終了： " + elapsed + "秒";
+                  currentRecordId = null;
+
+                  records.push(data);
+                  updateChart();
+                  console.log("End:", data);
+            });
+      });
+
+      const ctx = document.getElementById('studyChart').getContext('2d');
+      const studyChart =  new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: '学習時間(秒)',
+            data: [],
+            backgroundColor: 'rgba(75, 192, 192, 0.5)'
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      function updateChart() {
+        const labels = records.map(r => r.startTime);
+        const data = records.map(r => r.duration);
+        studyChart.data.labels = labels;
+        studyChart.data.datasets[0].data = data;
+        studyChart.update();
+      }
+    </script>
   </body>
 </html>
