@@ -4,19 +4,18 @@ let elapsed = 0;
 let records = [];
 let studyChart;
 
-window.addEventListener("DOMContentLoaded", () =>{
+window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("startBtn").addEventListener("click", function() {
+    if(timerInterval) return;
     fetch('/start', {method: 'POST'})
      .then(res => res.json())
      .then(data => {
           currentRecordId = data.id;
-          elapsed = 0;
-          document.getElementById("timer").textContent = elapsed + "秒";
-  
-          clearInterval(timerInterval);
+          document.getElementById("timer").textContent = formatTime(elapsed);
+
           timerInterval = setInterval(() => {
             elapsed++;
-            document.getElementById("timer").textContent = elapsed + "秒";
+            document.getElementById("timer").textContent = formatTime(elapsed);
           }, 1000);
   
           console.log("Start:", data);
@@ -29,7 +28,9 @@ window.addEventListener("DOMContentLoaded", () =>{
        .then(res => res.json())
        .then(data => {
           clearInterval(timerInterval);
-          document.getElementById("timer").textContent = "終了： " + elapsed + "秒";
+          timerInterval = null;
+          
+          document.getElementById("timer").textContent = formatTime(elapsed);
           currentRecordId = null;
   
           records.push(data);
@@ -51,15 +52,44 @@ window.addEventListener("DOMContentLoaded", () =>{
       }]
     },
     options: {
+      responsive: false,
       scales: { y: { beginAtZero: true } }
     }
   });
 });
 
 function updateChart() {
-  const labels = records.map(r => r.startTime);
-  const data = records.map(r => r.duration);
-  studyChart.data.labels = labels;
-  studyChart.data.datasets[0].data = data;
+  const today = new Date();
+  const weekLabels = [];
+  const weekData = Array(7).fill(0);
+
+  for(let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    weekLabels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  }
+
+  records.forEach(r => {
+    const rDate = new Date(r.startTime);
+    const diff = Math.floor((today - rDate) / (1000 * 60 * 60 * 24));
+    if(diff >= 0 && diff < 7) {
+      weekData[6 - diff] += r.duration;
+    }
+  })
+
+  studyChart.data.labels = weekLabels;
+  studyChart.data.datasets[0].data = weekData;
   studyChart.update();
+}
+
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  const hStr = h.toString().padStart(2, '0');
+  const mStr = m.toString().padStart(2, '0');
+  const sStr = s.toString().padStart(2, '0');
+
+  return `${hStr}:${mStr}:${sStr}`;
 }
