@@ -12,6 +12,24 @@
     <button id="startBtn">開始</button>
     <button id="endBtn">終了</button>
     <p><span id="timer">00:00:00</span></p>
+
+    <p>学習内容メモ： </p>
+    <textarea id="studyMemo" rows="3" cols="50" placeholder="何を勉強したか書こう"></textarea>
+    <button id="saveMemoBtn">保存</button>
+
+    <h2>学習履歴</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>時間</th>
+          <th>メモ</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable"></tbody>
+    </table>
+
+
     <canvas id="studyChart" style="width:50%; height:300px; display:block; margin-top:20px; margin-left:0;"></canvas>
 
   </body>

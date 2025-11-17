@@ -4,59 +4,24 @@ let elapsed = 0;
 let records = [];
 let studyChart;
 
-window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("startBtn").addEventListener("click", function() {
-    if(timerInterval) return;
-    fetch('/start', {method: 'POST'})
-     .then(res => res.json())
-     .then(data => {
-          currentRecordId = data.id;
-          document.getElementById("timer").textContent = formatTime(elapsed);
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
-          timerInterval = setInterval(() => {
-            elapsed++;
-            document.getElementById("timer").textContent = formatTime(elapsed);
-          }, 1000);
-  
-          console.log("Start:", data);
-        });
+function updateHistory() {
+  const tbody = document.getElementById("historyTable");
+  tbody.innerHTML = "";
+  records.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${new Date(r.startTime). toLocaleDateString()}</td>
+                    <td>${formatTime(r.duration)}</td>
+                    <td>${r.memo || "-"}</td>`;
+    tbody.appendChild(tr);
   });
-  
-  document.getElementById("endBtn").addEventListener("click", function() {
-    if(!currentRecordId) return;
-    fetch('/end/' + currentRecordId, {method: 'POST'})
-       .then(res => res.json())
-       .then(data => {
-          clearInterval(timerInterval);
-          timerInterval = null;
-          
-          document.getElementById("timer").textContent = formatTime(elapsed);
-          currentRecordId = null;
-  
-          records.push(data);
-          updateChart();
-          console.log("End:", data);
-        });
-  });
-  
-  const ctx = document.getElementById('studyChart').getContext('2d');
-  studyChart =  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [],
-      datasets: [{
-        label: '学習時間(秒)',
-        data: [],
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        barThickness: 5
-      }]
-    },
-    options: {
-      responsive: false,
-      scales: { y: { beginAtZero: true } }
-    }
-  });
-});
+}
 
 function updateChart() {
   const today = new Date();
@@ -82,14 +47,70 @@ function updateChart() {
   studyChart.update();
 }
 
-function formatTime(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("startBtn").addEventListener("click", function() {
+    if(timerInterval) return;
+    fetch('/start', {method: 'POST'})
+     .then(res => res.json())
+     .then(data => {
+          currentRecordId = data.id;
+          elapsed = 0;
+          document.getElementById("timer").textContent = formatTime(elapsed);
 
-  const hStr = h.toString().padStart(2, '0');
-  const mStr = m.toString().padStart(2, '0');
-  const sStr = s.toString().padStart(2, '0');
+          timerInterval = setInterval(() => {
+            elapsed++;
+            document.getElementById("timer").textContent = formatTime(elapsed);
+          }, 1000);
+  
+          console.log("Start:", data);
+        });
+  });
+  
+  document.getElementById("endBtn").addEventListener("click", () => {
+    if(!currentRecordId) return;
+    fetch('/end/' + currentRecordId, {method: 'POST'})
+       .then(res => res.json())
+       .then(data => {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          
+          document.getElementById("timer").textContent = formatTime(elapsed);
+          currentRecordId = null;
+  
+          data.duration = elapsed;
+          records.push(data);
+          updateChart();
+          updateHistory();
+          console.log("End:", data);
+        });
+  });
+  
+  const ctx = document.getElementById('studyChart').getContext('2d');
+  studyChart =  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        label: '学習時間(秒)',
+        data: [],
+        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        barThickness: 5
+      }]
+    },
+    options: {
+      responsive: false,
+      scales: { y: { beginAtZero: true } }
+    }
+  });
 
-  return `${hStr}:${mStr}:${sStr}`;
-}
+  document.getElementById("saveMemoBtn").addEventListener("click", () => {
+    const memo = document.getElementById("studyMemo").value;
+    if(records.length === 0) {
+      alert("まずタイマーで学習を開始して終了してください。");
+      return;
+    }
+    records[records.length - 1].memo = memo;
+    updateHistory();
+    alert("メモを保存しました。");
+  });
+});
