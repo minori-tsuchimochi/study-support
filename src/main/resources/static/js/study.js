@@ -3,6 +3,7 @@ let timerInterval = null;
 let elapsed = 0;
 let records = [];
 let studyChart;
+let streakCount = 0;
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -47,7 +48,33 @@ function updateChart() {
   studyChart.update();
 }
 
+function updateStreak(records) {
+  if(records.length === 0) {
+    streakCount = 0;
+  } else {
+    const today = new Date();
+    const lastRecordDate = new Date(records[records.length - 1].startTime);
+    const lastDay = new Date(lastRecordDate.getFullYear(), lastRecordDate.getMonth(), lastRecordDate.getDate());
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffDay = (todayDay - lastDay) / (1000 * 60 * 60 * 24);
+
+    if (records.length === 1) {
+      streakCount = 1;
+    } else if (diffDay === 1) {
+      streakCount += 1;
+    } else if (diffDay > 1) {
+      streakCount = 1;
+    }
+  }
+  document.getElementById("streakCount").textContent = streakCount;
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+
+  const streakp = document.createElement("p");
+  streakp.innerHTML = `連続学習日数： <span id="streakCount">0</span> 日 🔥`;
+  document.body.insertBefore(streakp, document.getElementById("startBtn"));
+
   document.getElementById("startBtn").addEventListener("click", function() {
     if(timerInterval) return;
     fetch('/start', {method: 'POST'})
@@ -73,14 +100,15 @@ window.addEventListener("DOMContentLoaded", () => {
        .then(data => {
           clearInterval(timerInterval);
           timerInterval = null;
-          
           document.getElementById("timer").textContent = formatTime(elapsed);
+
           currentRecordId = null;
-  
+
           data.duration = elapsed;
           records.push(data);
           updateChart();
           updateHistory();
+          updateStreak(records);
           console.log("End:", data);
         });
   });
